@@ -1,0 +1,26 @@
+*{box-sizing:border-box}
+html,body,#app{height:100%}
+body{margin:0;overflow:hidden;background:var(--bg-fill) center/cover no-repeat fixed}
+body::before{content:"";position:fixed;inset:0;background:url("/src/assets/bg-gradient.svg") center/cover no-repeat;opacity:.9;z-index:-1}
+.stage-wrap{position:fixed;inset:0;display:grid;place-items:center}
+.stage{position:relative;width:960px;height:540px;transform:scale(var(--s,1));transform-origin:center;}
+.row{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+
+.stage-overlay{ position:absolute; inset:0; pointer-events:none; }
+
+
+:root{ --s:1; }
+
+/* Fullscreen centering of the scaled stage */
+.viewport{ position:fixed; inset:0; display:grid; place-items:center; }
+
+/* Shell size grows with scale; used to center the transformed stage */
+.stage-shell{ width: calc(960px * var(--s)); height: calc(540px * var(--s)); }
+
+/* The actual 960x540 canvas; we scale it like an image */
+.stage{ position:relative; width:960px; height:540px; transform: scale(var(--s)); transform-origin: top left; }
+
+/* Overlay target for modals/overlays so they scale with the stage */
+.stage-overlay{ position:absolute; inset:0; pointer-events:none; }
+

@@ -1,0 +1,37 @@
+:root{
+    --OnSurfaceVariant: #7b8592;
+    --SurfaceContainer: #242426;
+    --OnSurfaceContainer: #c4c7c5;
+    --OnSurface: #e3e3e3;
+    --Secondary: #253243;
+    --OnSecondary: #f6f7f7;
+    --SecondaryContainer: #1a2533;
+    --OnSecondaryContainer: #6e7f95;
+    --TertiaryContainer: #112026;
+    --OnTertiary: #f5f6f6;
+    --OnTertiaryContainer: #6b7d83;
+    --Placeholder: #8c9799;
+    --Tonalcontainer: rgba(10, 14, 20, 0.5);
+    --Outline: rgba(255, 255, 255, 0.07);
+    --Outline-Variant: rgba(255, 255, 255, 0.06);
+    --SurfaceBlur: rgba(255, 255, 255, 0.12);
+    --OnSurfaceBlur: rgba(255, 255, 255, 0.04);
+    --bg-fill: #0d0d0e;
+
+    /* зручні “дефіcні” псевдоніми з дизайну */
+    --Surface-Container: var(--SurfaceContainer);
+    --On-Surface-Container: var(--OnSurfaceContainer);
+    --On-Surface: var(--OnSurface);
+    --On-Secondary: var(--OnSecondary);
+    --On-Surface-Variant: var(--OnSurfaceVariant);
+    --Secondary-Container: var(--SecondaryContainer);
+    --On-Secondary-Container: var(--OnSecondaryContainer);
+    --Tonal-container: var(--Tonalcontainer);
+    --On-Tertiary: var(--OnTertiary);
+    --On-Tertiary-Container: var(--OnTertiaryContainer);
+    --On-Surface-Blur: var(--OnSurfaceBlur);
+    --Surface-Blur: var(--SurfaceBlur);
+}
+
+
+
