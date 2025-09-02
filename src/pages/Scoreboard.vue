@@ -9,21 +9,22 @@ import TotalsRow from '@/components/scoreboard/TotalsRow.vue'
 import TotalWidget from '@/components/scoreboard/TotalWidget.vue'
 import SelectMelodyModal from '@/components/modals/SelectMelodyModal.vue'
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSound } from '@/composables/useSound'
 import { getScoreService } from '@/services/scoreboard'
 import { toRow } from '@/mappers/scoreboard'
 import { getGroupService } from '@/services/groups'
 
+/* ------- router / tabs ------- */
 const route = useRoute(), router = useRouter()
 const activeTab = ref(String(route.query.tab ?? 'sales'))
 watch(activeTab, v => router.replace({ query: { ...route.query, tab: v } }))
 const tabs = [{ label: 'Sales', value: 'sales' }, { label: 'Retention', value: 'retention' }]
 
+/* ------- sound / modal ------- */
 const sound = useSound()
 const showMelody = ref(false)
-
 const volumeOn = computed<boolean>(() => !!sound.enabled.value)
 
 /* ------- дані таблиці ------- */
@@ -53,12 +54,12 @@ async function refreshGroups () {
 }
 refreshGroups()
 
-const groupingOn   = ref(false)
-const selectedIds  = ref<Array<string | number>>([])
-const canAddGroup  = computed(() => groupingOn.value && selectedIds.value.length > 0)
+const groupingOn  = ref(false)
+const selectedIds = ref<Array<string | number>>([])
+const canAddGroup = computed(() => groupingOn.value && selectedIds.value.length > 0)
 
-// допоміжні біндинги, щоб TS не бурчав у шаблоні
-const groupingOnBool = computed(() => !!groupingOn.value)
+/* допоміжний boolean щоб TS не бурчав у шаблоні */
+const groupingOnBool = computed<boolean>(() => !!groupingOn.value)
 
 function toggleGrouping () {
   groupingOn.value = !groupingOn.value
@@ -95,7 +96,9 @@ const visibleRows = computed<(BaseRow | GroupRow)[]>(() => {
   return list
 })
 
-function fmt (n: number) { return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }) }
+function fmt (n: number) {
+  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+}
 const totalMonthly = computed(() => visibleRows.value.reduce((s, r) => s + (Number((r as any).monthly) || 0), 0))
 
 async function openGroupingModal () {
@@ -110,6 +113,11 @@ async function ungroup (id: string | number) {
   await getGroupService().remove(String(id))
   await refreshGroups()
 }
+
+/* ------- UX: закриття модала по Esc ------- */
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') showMelody.value = false }
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
@@ -121,7 +129,7 @@ async function ungroup (id: string | number) {
       @logout="$router.push('/login')"
   />
 
-
+  <!-- Таблиця ховається, коли відкрито модал -->
   <section
       v-show="!showMelody"
       class="table-section"
@@ -144,7 +152,6 @@ async function ungroup (id: string | number) {
         </div>
       </template>
 
-
       <ScoreTable
           :rows="visibleRows"
           :grouping-on="groupingOnBool"
@@ -159,12 +166,17 @@ async function ungroup (id: string | number) {
     </TableContainer>
   </section>
 
-
-  <div v-if="showMelody" class="melody-layer">
+  <!-- Модал-шар без бекдропа. Видно Header + ця область -->
+  <div
+      v-if="showMelody"
+      class="melody-layer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Select melody"
+  >
     <SelectMelodyModal @close="showMelody = false" />
   </div>
 </template>
-
 
 <style scoped>
 .melody-layer{
@@ -172,8 +184,8 @@ async function ungroup (id: string | number) {
   inset: 0;
   display: grid;
   place-items: start center;
-  padding-top: 40px;
+  padding-top: 40px;     /* як просили */
   z-index: 20;
-  pointer-events: auto;
+  pointer-events: auto;  /* кліки в модалі працюють, поза ним – ігнор */
 }
 </style>
