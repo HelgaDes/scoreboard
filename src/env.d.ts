@@ -7,3 +7,8 @@ declare module '*.vue' {
   const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>
   export default component
 }
+
+declare module '*.mp3'     { const src: string; export default src }
+declare module '*.wav'     { const src: string; export default src }
+declare module '*.mp3?url' { const src: string; export default src }
+declare module '*.wav?url' { const src: string; export default src }

@@ -1,28 +1,100 @@
 <script setup lang="ts">
-import ModalPanel from './ModalPanel.vue'
-import ButtonAction from '@/components/ui/ButtonAction.vue'
 import Icon from '@/components/ui/Icon.vue'
+import ButtonAction from '@/components/ui/ButtonAction.vue'
 import { useSound } from '@/composables/useSound'
+
+// ✅ новий фон саме для цієї модалки
+import bgMelodyUrl from '@/assets/bg-blur-modal-melody.svg?url'
+
 const props = defineProps<{ onClose?: () => void }>()
 const sound = useSound()
-const options = [{ key:'fanfare', label:'Fanfare' }, { key:'herecomes', label:'Here Comes' }, { key:'pimp', label:'Pimp' }]
+
+const options = [
+  { key:'fanfare',   label:'Fanfare' },
+  { key:'herecomes', label:'Here Comes' },
+  { key:'pimp',      label:'Pimp' }
+]
 </script>
+
 <template>
-  <ModalPanel title="Select melody">
-    <div class="list">
-      <button v-for="o in options" :key="o.key" class="item" @click="sound.setMelody(o.key as any)">
-        <span class="name BodySmall">{{ o.label }}</span>
-        <Icon v-if="sound.getMelody() === (o.key as any)" name="check" :size="16"/>
-      </button>
+  <div class="modal" role="dialog" aria-label="Select melody">
+    <!-- фоновий шар РІВНО під контейнер (тягнеться за висотою контенту) -->
+    <img class="modal__bg" :src="bgMelodyUrl" alt="" aria-hidden="true" />
+
+    <div class="modal__content">
+      <div class="hdr">
+        <div class="H2" style="text-align:center">Select melody</div>
+      </div>
+
+      <div class="list">
+        <button v-for="o in options" :key="o.key" class="item" @click="sound.setMelody(o.key as any)">
+          <span class="name BodySmall">{{ o.label }}</span>
+          <Icon v-if="sound.getMelody() === (o.key as any)" name="check" :size="16"/>
+        </button>
+      </div>
+
+      <div class="divider" role="separator" aria-orientation="horizontal"></div>
+
+      <div class="actions">
+        <ButtonAction class="act" label="Test melody"  variant="primary"   @click="sound.test()" />
+        <ButtonAction class="act" label="Close"        variant="secondary" @click="props.onClose?.()" />
+      </div>
     </div>
-    <template #footer>
-      <ButtonAction label="Test melody" variant="primary" @click="sound.test()" />
-      <ButtonAction label="Close" variant="secondary" @click="props.onClose?.()" />
-    </template>
-  </ModalPanel>
+  </div>
 </template>
+
 <style scoped>
-.list{display:flex;flex-direction:column;align-items:stretch;gap:0;align-self:stretch;border-radius:12px;overflow:hidden}
-.item{display:flex;height:40px;padding:0 6px 0 14px;align-items:center;gap:6px;justify-content:space-between;border-bottom:1px solid var(--Outline);background:var(--Tonalcontainer);color:#fff}
-.name{color:rgba(255,255,255,.96)}
+/* Коробка: фіксована ширина, ВИСОТА — за контентом */
+.modal{
+  position: relative;
+  width: 280px;
+  display: grid;
+  /* підняти модалку трохи нижче заголовка */
+  margin-top: 76px;
+}
+
+/* Фон: абсолютний шар під контентом, 100%×100% */
+.modal__bg{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;     /* рівно заповнюємо всю коробку */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Весь контент — всередині; padding тут, щоб фон НЕ “стискався” */
+.modal__content{
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;               /* 12px з макета */
+  box-sizing: border-box;
+}
+
+/* заголовок ~32px + відступ 12px до списку */
+.hdr{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  margin-bottom: 12px;
+}
+
+/* список мелодій */
+.list{ display:flex; flex-direction:column; align-items:stretch; border-radius:12px; overflow:hidden }
+.item{
+  display:flex; height:40px; padding:0 6px 0 14px; align-items:center; gap:6px;
+  justify-content:space-between; border-bottom:1px solid var(--Outline);
+  background: var(--Tonalcontainer); color:#fff;
+}
+.name{ color: rgba(255,255,255,.96) }
+
+/* лінія + кнопки одна під одною */
+.divider{ height:1px; background: var(--Outline-Variant); margin:16px 0 6px 0; }
+.actions{ display:flex; flex-direction:column; gap:8px; }
+.actions .act{ width:100%; }
 </style>

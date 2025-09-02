@@ -17,6 +17,7 @@
     --SurfaceBlur: rgba(255, 255, 255, 0.12);
     --OnSurfaceBlur: rgba(255, 255, 255, 0.04);
     --bg-fill: #0d0d0e;
+    --OnPrimary: #ffffff;
 
     /* зручні “дефіcні” псевдоніми з дизайну */
     --Surface-Container: var(--SurfaceContainer);
