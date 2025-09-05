@@ -54,7 +54,6 @@ const emit = defineEmits<{
   padding:12px 16px;
 }
 
-
 .actions{
   display:flex;
   align-items:center;
@@ -71,11 +70,9 @@ const emit = defineEmits<{
   display:grid; place-items:center;
   border-radius:999px;
   background: var(--SurfaceContainer, rgba(255,255,255,.06));
-  color: inherit; /* svg бере currentColor */
-  /* ➕ додано color у transition */
+  color: inherit;
   transition: background .15s ease, color .15s ease, opacity .15s ease;
 }
-
 
 .actions :deep(svg),
 .actions :deep(path),
@@ -85,14 +82,12 @@ const emit = defineEmits<{
   stroke: currentColor;
 }
 
-
 @media (hover:hover){
   .actions .icon-btn:hover{
     background: var(--OnSurfaceContainer, #C4C7C5);
     color: var(--SurfaceContainer, #242426);
   }
 }
-
 
 .icon-btn[aria-pressed="true"]{
   color: var(--hdr-icon-active);

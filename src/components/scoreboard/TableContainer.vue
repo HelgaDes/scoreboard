@@ -18,5 +18,5 @@ const props = withDefaults(defineProps<{ width?: number; overlayTop?: number }>(
 .tbl__overlay { position:absolute; left:50%; transform:translateX(-50%); z-index:2; }
 .tbl__header { display:flex; padding:0 8px 16px; justify-content:space-between; align-items:center; align-self:stretch; }
 .tbl__rows { display:flex; padding-bottom:8px; flex-direction:column; align-items:flex-start; align-self:stretch; }
-.tbl__totals { display:flex; height:50px; align-items:center; align-self:stretch; border-radius:100px; background: var(--Tonalcontainer); box-shadow: 0 -0.318px 0.636px rgba(255,255,255,.30) inset, 0 -0.318px 0.636px rgba(255,255,255,.25) inset, 0.636px 0.955px 2.545px rgba(0,0,0,.08) inset, 0.636px 0.955px 2.545px rgba(0,0,0,.10) inset; padding:8px 12px; box-sizing:border-box; }
+.tbl__totals { display:flex; height:50px; align-items:center; align-self:stretch; border-radius:100px; background: var(--TonalContainer); box-shadow: 0 -0.318px 0.636px rgba(255,255,255,.30) inset, 0 -0.318px 0.636px rgba(255,255,255,.25) inset, 0.636px 0.955px 2.545px rgba(0,0,0,.08) inset, 0.636px 0.955px 2.545px rgba(0,0,0,.10) inset; padding:8px 12px; box-sizing:border-box; }
 </style>

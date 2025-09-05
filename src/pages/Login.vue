@@ -9,7 +9,6 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { AuthError } from '@/services/types'
 
-// URL SVG (рядок)
 import bgUrl from '@/assets/bg-blur-modal.svg?url'
 
 const r = useRouter()
@@ -57,16 +56,13 @@ async function onSubmit() {
   <div class="row" style="justify-content:center;margin-top:76px">
     <div class="loginWrap">
 
-      <!-- Коробка рівно 280×255 без паддінгів -->
       <div class="loginCard">
-        <!-- Фон під контентом, тягнеться 100%×100% коробки -->
         <div
             class="loginCard__bg"
             :style="{ background: `url(${bgUrl}) center / 100% 100% no-repeat` }"
             aria-hidden="true"
         ></div>
 
-        <!-- Весь контент із внутрішніми паддінгами -->
         <div class="loginCard__content">
           <div class="cardHdr">
             <div class="H2" style="text-align:center">Welcome back</div>
@@ -89,14 +85,13 @@ async function onSubmit() {
         </div>
       </div>
 
-      <!-- Помилка ПІД карткою, по центру -->
       <div v-if="err" class="err BodySmall">{{ err }}</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* контейнер для вирівнювання помилки під карткою */
+
 .loginWrap{
   display:flex;
   flex-direction:column;
@@ -104,7 +99,7 @@ async function onSubmit() {
   gap:12px;
 }
 
-/* Фіксована коробка 280×255, без паддінгів! */
+
 .loginCard{
   position:relative;
   width:280px;
@@ -112,7 +107,7 @@ async function onSubmit() {
   display:block;
 }
 
-/* Фон — рівно 280×255, НЕ успадковує паддінги */
+
 .loginCard__bg{
   position:absolute;
   inset:0;
@@ -122,14 +117,14 @@ async function onSubmit() {
   user-select:none;
 }
 
-/* Внутрішній контент із паддінгом */
+
 .loginCard__content{
   position:relative;
   z-index:1;
   width:100%;
   height:100%;
-  padding:12px;           /* 12px як у макеті */
-  box-sizing:border-box;  /* щоб 280×255 включали паддінг */
+  padding:12px;
+  box-sizing:border-box;
   display:flex;
   flex-direction:column;
   gap:4px;
@@ -142,26 +137,25 @@ async function onSubmit() {
   align-items:center;
   justify-content:center;
   height:32px;
-  margin-bottom:12px; /* від заголовка до першого інпута */
+  margin-bottom:12px;
 }
 
 .cardBody{
   display:flex;
   flex-direction:column;
-  gap:16px; /* вертикальний інтервал полів */
+  gap:16px;
 }
 
-/* Divider: 16 зверху, 6 знизу */
 .divider{
   margin-top:16px;
   margin-bottom:6px;
   align-self:stretch;
 }
 
-/* кнопка на всю ширину */
+
 :deep(button){ width:100%; }
 
-/* помилка під карткою */
+
 .err{
   color:#ffb4ab;
   text-align:center;
