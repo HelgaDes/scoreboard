@@ -1,15 +1,66 @@
 <script setup lang="ts">
-const props = defineProps<{ modelValue: boolean }>()
-const emit = defineEmits<{ (e:'update:modelValue', v:boolean): void }>()
+import { computed } from 'vue'
+import selectedSvg   from '@/assets/icons/Icon-checkbox-selected.svg?raw'
+import unselectedSvg from '@/assets/icons/Icon-checkbox-unselected.svg?raw'
+
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  checked?: boolean
+  disabled?: boolean
+  title?: string
+}>(), { disabled: false })
+
+const emit = defineEmits<{
+  (e:'update:modelValue', v:boolean):void
+  (e:'change', v:boolean):void
+  (e:'toggle', v:boolean):void
+}>()
+
+const isChecked = computed(() => (props.modelValue ?? props.checked ?? false) as boolean)
+
+function toggle () {
+  if (props.disabled) return
+  const v = !isChecked.value
+  emit('update:modelValue', v)
+  emit('change', v)
+  emit('toggle', v)
+}
 </script>
+
 <template>
-  <button class="chk" :aria-checked="props.modelValue" role="checkbox" @click="emit('update:modelValue', !props.modelValue)">
-    <div class="box" :data-on="props.modelValue"></div>
+  <button
+      type="button"
+      class="checkbox"
+      role="checkbox"
+      :aria-checked="isChecked ? 'true' : 'false'"
+      :title="title || (isChecked ? 'Selected' : 'Not selected')"
+      :disabled="disabled"
+      @click="toggle"
+  >
+    <span
+        class="ico"
+        :class="isChecked ? 'is-checked' : 'is-unchecked'"
+        v-html="isChecked ? selectedSvg : unselectedSvg"
+    />
   </button>
 </template>
+
 <style scoped>
-.chk{display:flex;width:16px;height:16px;align-items:center;justify-content:center}
-.box{width:100%;height:100%;border-radius:3px;background:var(--OnSecondaryContainer,#6E7F95);position:relative}
-.box[data-on="true"]{background:var(--OnSurface,#E3E3E3)}
-.box[data-on="true"]::after{content:'';position:absolute;inset:3px;background:url('@/assets/Icon-check.svg') center/contain no-repeat}
+.checkbox{
+  display:flex; width:16px; height:16px;
+  justify-content:center; align-items:center; flex-shrink:0;
+  padding:0; border:0; background:none; cursor:pointer;
+}
+.checkbox:disabled{ cursor:default; opacity:.6 }
+
+.ico{ display:block; width:16px; height:16px; line-height:0; }
+.ico :deep(svg){ width:16px; height:16px; display:block; }
+
+.is-unchecked :deep(path){
+  fill: var(--On-Secondary-Container, var(--OnSecondaryContainer));
+}
+.is-checked :deep(path){
+  fill: var(--On-Secondary, var(--OnSecondary));
+}
 </style>
+

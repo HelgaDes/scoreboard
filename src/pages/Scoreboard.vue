@@ -115,7 +115,7 @@ const totalMonthly = computed(() => visibleRows.value.reduce((s, r) => s + (Numb
 
 async function openGroupingModal () {
   if (!canAddGroup.value) return
-  showGrouping.value = true // ⬅️ БУЛО: window.prompt(...)
+  showGrouping.value = true //
 }
 
 async function onGroupingCreate (name: string) {
@@ -187,7 +187,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       />
 
       <template #totals>
-        <TotalsRow :rows="visibleRows as any" />
+        <div class="totals">
+          <TotalsRow :rows="visibleRows as any" />
+        </div>
       </template>
     </TableContainer>
   </section>
@@ -227,5 +229,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   padding-top: 155px;
   z-index: 30;
   pointer-events: auto;
+}
+
+.totals{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
 }
 </style>

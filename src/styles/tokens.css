@@ -31,6 +31,10 @@
     --On-Tertiary-Container: var(--OnTertiaryContainer);
     --On-Surface-Blur: var(--OnSurfaceBlur);
     --Surface-Blur: var(--SurfaceBlur);
+
+    :root{
+        --pill-bg: url('@/assets/bg-blur-widget.svg');
+    }
 }
 
 
