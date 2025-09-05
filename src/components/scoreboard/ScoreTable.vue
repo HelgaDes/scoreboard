@@ -72,22 +72,67 @@ function isGroup(r: BaseRow|GroupRow): r is GroupRow { return (r as any).type ==
 
 <style scoped lang="scss">
 $onSurfVar: var(--OnSurfaceVariant, var(--On-Surface-Variant, #7B8592));
-$onSurf: var(--OnSurface, var(--On-Surface, #E3E3E3));
+$onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
+
 .tbl-wrap{ width:100%; display:flex; flex-direction:column; }
+
+/* header */
 .thead{ display:flex; align-items:center; gap:1px; align-self:stretch; }
-.th{ color:#{$onSurfVar}; font:400 12px/16px Oswald; letter-spacing:.25px; display:flex; flex-direction:column; justify-content:center; align-self:stretch; }
-.th--num{ width:40px; padding:5px 14px; align-items:center; }
-.th--agent{ width:160px; align-items:flex-start; }
-.th--amt,.th--goal{ width:60px; align-items:center; }
-.th--period{ flex:1 0 0; align-items:flex-start; }
+.th{
+  color:#{$onSurfVar};
+  font: 400 12px/16px Oswald;
+  letter-spacing:.25px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  align-self:stretch;
+}
+.th--num   { width:40px;  padding:5px 14px; }
+.th--agent { width:160px; text-align:left; align-items:flex-start; }
+.th--amt,
+.th--goal  { width:60px;  }
+.th--period{ flex:1 0 0;  text-align:left; align-items:flex-start; }
+
+/* body */
 .tbody{ display:flex; flex-direction:column; }
-.tr{ display:flex; height:40px; align-items:flex-start; gap:1px; }
-.td{ color:#{$onSurf}; font:400 14px/20px Oswald; letter-spacing:.25px; display:flex; flex-direction:column; justify-content:center; }
-.td--num{ width:40px; padding:5px 14px; color:#{$onSurfVar}; align-items:center; }
-.td--agent{ width:160px; align-items:flex-start; }
-.td--amt,.td--goal{ width:60px; align-items:center; }
-.td--period{ width:120px; flex:1 0 0; align-items:flex-start; }
+.tr{
+  display:flex;
+  height:40px;
+  align-items:center;
+  gap:1px;
+}
+.td{
+  color:#{$onSurf};
+  font: 400 14px/20px Oswald;
+  letter-spacing:.25px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+}
+.td--num{
+  width:40px;
+  padding:5px 14px;
+  color:#{$onSurfVar};
+  font: 700 20px/32px Oswald;
+}
+.td--agent{
+  width:160px;
+  text-align:left;
+  align-items:flex-start;
+}
+.td--amt,
+.td--goal{ width:60px; }
+.td--period{
+  width:120px; flex:1 0 0;
+  text-align:left; align-items:flex-start;
+}
+
 .agent-cell{ display:flex; align-items:center; gap:8px; }
 .inline-icon{ margin-left:8px; background:none; border:0; padding:0; display:inline-flex; align-items:center; cursor:pointer; }
 .tr--group .agent-text{ font-weight:600 }
 </style>
+
