@@ -1,104 +1,119 @@
 <script setup lang="ts">
-import Icon from '@/components/ui/Icon.vue'
+import { ref, computed } from 'vue'
+import TextField from '@/components/ui/TextField.vue'
+import ButtonAction from '@/components/ui/ButtonAction.vue'
+import bgUrl from '@/assets/bg-blur-modal-grouping.svg?url'
 
-const props = withDefaults(defineProps<{
-  title?: string
-  showActions?: boolean
-  volumeOn?: boolean
-}>(), {
-  title: 'Sales Scoreboard',
-  showActions: true,
-  volumeOn: true,
-})
+const props = defineProps<{ members?: string[] }>()
+const emit = defineEmits<{ (e:'create', name:string):void; (e:'close'):void }>()
 
-const emit = defineEmits<{
-  (e: 'toggle-volume'): void
-  (e: 'open-melody'): void
-  (e: 'logout'): void
-}>()
+const name = ref('')
+const err  = ref<string | null>(null)
+const membersText = computed(() => (props.members ?? []).join(', '))
+
+function submit() {
+  const v = name.value.trim()
+  if (!v) { err.value = 'Please enter group name'; return }
+  err.value = null
+  emit('create', v)
+}
 </script>
 
 <template>
-  <header class="hdr">
-    <h1 class="H1">{{ props.title }}</h1>
-
-    <div v-if="props.showActions" class="actions">
-      <div class="group">
-        <button class="icon-btn" aria-label="sound" title="sound" @click="emit('open-melody')">
-          <Icon name="sound" />
-        </button>
-
-        <button
-            class="icon-btn"
-            :aria-pressed="props.volumeOn ? 'true' : 'false'"
-            :title="props.volumeOn ? 'volume-up' : 'volume-off'"
-            aria-label="volume"
-            @click="emit('toggle-volume')"
-        >
-          <Icon :name="props.volumeOn ? 'volume-up' : 'volume-off'" />
-        </button>
+  <div class="modal" role="dialog" aria-label="Add group">
+    <div
+      class="modal__bg"
+      :style="{ backgroundImage: `url(${bgUrl})` }"
+      aria-hidden="true"
+    />
+    <div class="modal__content">
+      <div class="hdr">
+        <div class="H2" style="text-align:center">Add group</div>
       </div>
 
-      <button class="icon-btn" aria-label="logout" title="logout" @click="emit('logout')">
-        <Icon name="logout" />
-      </button>
+      <!-- вибрані агенти -->
+      <div
+        v-if="membersText"
+        class="members BodySmall"
+        :title="membersText"
+        aria-label="Selected agents"
+      >
+        {{ membersText }}
+      </div>
+
+      <div class="body">
+        <TextField v-model="name" placeholder="Group name" :block="true" clearable />
+      </div>
+
+      <div class="actions">
+        <ButtonAction label="Create" variant="primary" :block="true" @click="submit" />
+        <ButtonAction label="Cancel" variant="secondary" :block="true" @click="emit('close')" />
+      </div>
+
+      <div v-if="err" class="err BodySmall">{{ err }}</div>
     </div>
-  </header>
+  </div>
 </template>
 
 <style scoped>
-.hdr{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:12px 16px;
+.modal{
+  width: 280px;
+  display: grid;
 }
 
+.modal__bg{
+  grid-area: 1 / 1;
+  align-self: stretch;
+  justify-self: stretch;
+  background: none center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.modal__content{
+  grid-area: 1 / 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.hdr{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  margin-bottom: 12px;
+}
+
+.members{
+  align-self: stretch;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--TonalContainer, rgba(255,255,255,.06));
+  color: var(--OnSurface, #E5E9F0);
+  line-height: 16px;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;   /* максимум 2 рядки */
+  line-clamp: 2;           /* стандартна властивість для підтримки */
+}
 
 .actions{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  --hdr-icon: rgba(255,255,255,.86);
-  --hdr-icon-active: #fff;
-  color: var(--hdr-icon);
-}
-.group{ display:flex; align-items:center; gap:8px; }
-
-
-.icon-btn{
-  width:28px; height:28px;
-  display:grid; place-items:center;
-  border-radius:999px;
-  background: var(--SurfaceContainer, rgba(255,255,255,.06));
-  color: inherit; /* svg бере currentColor */
-  /* ➕ додано color у transition */
-  transition: background .15s ease, color .15s ease, opacity .15s ease;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  display: grid;
+  row-gap: 8px;
 }
 
-
-.actions :deep(svg),
-.actions :deep(path),
-.actions :deep(circle),
-.actions :deep(rect){
-  fill: currentColor;
-  stroke: currentColor;
-}
-
-
-@media (hover:hover){
-  .actions .icon-btn:hover{
-    background: var(--OnSurfaceContainer, #C4C7C5);
-    color: var(--SurfaceContainer, #242426);
-  }
-}
-
-
-.icon-btn[aria-pressed="true"]{
-  color: var(--hdr-icon-active);
-}
-
-.hdr .H1{
-  color: var(--On-Surface-Variant, #7B8592);
+.err{
+  text-align: center;
+  color: #ffb4ab;
 }
 </style>
+

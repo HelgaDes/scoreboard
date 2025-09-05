@@ -7,11 +7,11 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
     plugins: [vue(), svgLoader()],
     resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
-      '@composables': fileURLToPath(new URL('./src/composables', import.meta.url)),
-      '@services': fileURLToPath(new URL('./src/services', import.meta.url)),
+        alias: {
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
+            '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
+            '@composables': fileURLToPath(new URL('./src/composables', import.meta.url)),
+            '@services': fileURLToPath(new URL('./src/services', import.meta.url)),
+        },
     },
-  }
 })
