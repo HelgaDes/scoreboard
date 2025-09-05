@@ -9,7 +9,7 @@ const emit = defineEmits<{ (e:'create', name:string):void; (e:'close'):void }>()
 
 const name = ref('')
 const err  = ref<string | null>(null)
-const membersText = computed(() => (props.members ?? []).join(', '))  // ✅ додано
+const membersText = computed(() => (props.members ?? []).join(', '))
 
 function submit() {
   const v = name.value.trim()
@@ -19,29 +19,24 @@ function submit() {
 }
 </script>
 
-
 <template>
-
   <div class="modal" role="dialog" aria-label="Add group">
-
     <div
-        class="modal__bg"
-        :style="{ backgroundImage: `url(${bgUrl})` }"
-        aria-hidden="true"
+      class="modal__bg"
+      :style="{ backgroundImage: `url(${bgUrl})` }"
+      aria-hidden="true"
     />
-
-
     <div class="modal__content">
       <div class="hdr">
         <div class="H2" style="text-align:center">Add group</div>
       </div>
 
-      <!-- ⬇️ новий рядок із вибраними агентами -->
+      <!-- вибрані агенти -->
       <div
-          v-if="membersText"
-          class="members BodySmall"
-          :title="membersText"
-          aria-label="Selected agents"
+        v-if="membersText"
+        class="members BodySmall"
+        :title="membersText"
+        aria-label="Selected agents"
       >
         {{ membersText }}
       </div>
@@ -61,11 +56,9 @@ function submit() {
 </template>
 
 <style scoped>
-
 .modal{
   width: 280px;
   display: grid;
-
 }
 
 .modal__bg{
@@ -106,7 +99,9 @@ function submit() {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;   /* максимум 2 рядки */
+  line-clamp: 2;           /* стандартна властивість для підтримки */
 }
 
 .actions{
@@ -120,6 +115,4 @@ function submit() {
   text-align: center;
   color: #ffb4ab;
 }
-
 </style>
-
