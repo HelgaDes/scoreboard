@@ -21,22 +21,15 @@ function submit() {
 
 <template>
   <div class="modal" role="dialog" aria-label="Add group">
-    <div
-      class="modal__bg"
-      :style="{ backgroundImage: `url(${bgUrl})` }"
-      aria-hidden="true"
-    />
+    <div class="modal__bg" :style="{ backgroundImage: `url(${bgUrl})` }" aria-hidden="true" />
     <div class="modal__content">
-      <div class="hdr">
-        <div class="H2" style="text-align:center">Add group</div>
-      </div>
+      <div class="hdr"><div class="H2" style="text-align:center">Add group</div></div>
 
-      <!-- вибрані агенти -->
       <div
-        v-if="membersText"
-        class="members BodySmall"
-        :title="membersText"
-        aria-label="Selected agents"
+          v-if="membersText"
+          class="members BodySmall"
+          :title="membersText"
+          aria-label="Selected agents"
       >
         {{ membersText }}
       </div>
@@ -56,10 +49,7 @@ function submit() {
 </template>
 
 <style scoped>
-.modal{
-  width: 280px;
-  display: grid;
-}
+.modal{ width:280px; display:grid; }
 
 .modal__bg{
   grid-area: 1 / 1;
@@ -87,6 +77,7 @@ function submit() {
   margin-bottom: 12px;
 }
 
+/* багаторядковий еліпсис + правильний токен кольору */
 .members{
   align-self: stretch;
   height: 32px;
@@ -100,8 +91,8 @@ function submit() {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;   /* максимум 2 рядки */
-  line-clamp: 2;           /* стандартна властивість для підтримки */
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .actions{
