@@ -54,31 +54,26 @@ const emit = defineEmits<{
   padding:12px 16px;
 }
 
-/* нічого не міняємо в заголовку (колір/розмір лишаються як були у проекті) */
-
-/* група іконок — базова сітка (відступи залишимо без змін лейауту) */
 .actions{
   display:flex;
   align-items:center;
-  gap:16px;          /* відступ між парою і logout — як у попередній версії */
-  /* колір іконок */
+  gap:16px;
   --hdr-icon: rgba(255,255,255,.86);
   --hdr-icon-active: #fff;
   color: var(--hdr-icon);
 }
-.group{ display:flex; align-items:center; gap:8px; } /* відступ всередині пари */
+.group{ display:flex; align-items:center; gap:8px; }
 
-/* кнопка-іконка */
+
 .icon-btn{
   width:28px; height:28px;
   display:grid; place-items:center;
   border-radius:999px;
   background: var(--SurfaceContainer, rgba(255,255,255,.06));
-  color: inherit;         /* важливо щоб svg взяв currentColor */
-  transition: background .15s ease, opacity .15s ease;
+  color: inherit;
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
 }
 
-/* SVG всередині кнопок фарбуємо currentColor */
 .actions :deep(svg),
 .actions :deep(path),
 .actions :deep(circle),
@@ -87,7 +82,13 @@ const emit = defineEmits<{
   stroke: currentColor;
 }
 
-/* активна (натиснута) кнопка гучності — інверсія кольору іконки */
+@media (hover:hover){
+  .actions .icon-btn:hover{
+    background: var(--OnSurfaceContainer, #C4C7C5);
+    color: var(--SurfaceContainer, #242426);
+  }
+}
+
 .icon-btn[aria-pressed="true"]{
   color: var(--hdr-icon-active);
 }
@@ -96,7 +97,3 @@ const emit = defineEmits<{
   color: var(--On-Surface-Variant, #7B8592);
 }
 </style>
-
-
-
-

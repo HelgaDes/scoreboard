@@ -1,4 +1,4 @@
-/* reset.css — UA button outline/border removed; no :focus-visible */
+
 *,
 *::before,
 *::after { box-sizing: border-box; }
@@ -10,7 +10,6 @@ body {
   background: #0D0D0E;
 }
 
-/* Neutralize UA button styles */
 button,
 [role="button"],
 input[type="button"],

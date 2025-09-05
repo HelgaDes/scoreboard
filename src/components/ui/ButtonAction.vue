@@ -27,7 +27,7 @@ const { label, variant, type } = defineProps<{
   border: 0;
   outline: 0;
   -webkit-appearance: none;
-  appearance: none; /* ✅ добавлено для кроссбраузерности */
+  appearance: none;
   cursor: pointer;
   transition: background 0.25s ease, color 0.25s ease, transform 0.1s ease;
 }
@@ -46,7 +46,6 @@ const { label, variant, type } = defineProps<{
   background: var(--SurfaceBlur);
 }
 
-/* ✅ только scale без затемнения */
 .act:active {
   transform: scale(0.96);
 }
