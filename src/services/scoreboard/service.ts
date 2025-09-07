@@ -1,72 +1,157 @@
+// src/services/scoreboard/service.ts
 import { http, HttpError } from '@/services/http'
-import type { ScoreboardQuery, ScoreboardResponseDTO, AgentMetricsDTO, ScoreTab } from './types'
+import type {
+    ScoreboardQuery,
+    ScoreboardResponseDTO,
+    ScoreboardTotalsDTO,
+    AgentMetricsDTO,
+    ScoreTab,
+} from './types'
 
+/** Public contract used by callers (kept here on purpose). */
 export interface ScoreService {
-  getScoreboard(q: ScoreboardQuery): Promise<ScoreboardResponseDTO>
+    getScoreboard(q: ScoreboardQuery): Promise<ScoreboardResponseDTO>
 }
+
+/* ───────────────────────── Real HTTP service ───────────────────────── */
 
 export function createHttpScoreService(baseUrl: string): ScoreService {
-  const api = (p: string) => baseUrl.replace(/\/$/, '') + p
-  return {
-    async getScoreboard(q) {
-      try {
-        const url = new URL(api('/scoreboard'), window.location.origin)
-        url.searchParams.set('tab', q.tab)
-        if (q.limit) url.searchParams.set('limit', String(q.limit))
-        if (q.sort) url.searchParams.set('sort', q.sort)
-        if (q.order) url.searchParams.set('order', q.order)
-        return await http<ScoreboardResponseDTO>(url.toString())
-      } catch (e) {
-        if (e instanceof HttpError) throw new Error(`Scoreboard HTTP ${e.status}`)
-        throw new Error('Scoreboard fetch failed')
-      }
-    },
-  }
-}
-
-export function createMockScoreService(): ScoreService {
-  const data: Record<ScoreTab, ScoreboardResponseDTO> = {
-    sales: {
-      tab: 'sales',
-      rows: [
-        row('1', 'Admin Admin', 1, 0, 0, 222, 0, 2033404.9, null),
-        row('2', 'Lia Delough', 0, 0, 0, 0, 0, 1010002, null),
-        row('3', 'Pine Apple', 0, 0, 0, 0, 0, 60764.4, null),
-        row('4', 'Jeff Jonson', 0, 0, 0, 0, 0, 41652.81, null),
-        row('5', 'Freya Admin', 0, 0, 0, 0, 0, 4500, null),
-        row('6', 'Olivia Agent', 0, 0, 0, 0, 0, 400, null),
-        row('7', 'Jane Test', 0, 0, 0, 0, 0, 200, null),
-      ],
-    },
-    retention: {
-      tab: 'retention',
-      rows: [
-        row('8', 'Retain Bot', 0, 0, 0, 0, 0, 980000, null),
-        row('9', 'Renew King', 0, 0, 0, 0, 0, 120000, null),
-      ],
-    },
-  }
-  return {
-    async getScoreboard(q) {
-      const src = data[q.tab]
-      const rows = [...src.rows]
-      rows.sort((a, b) => b.revenue.monthly - a.revenue.monthly)
-      const limited = rows.slice(0, q.limit ?? 7)
-      return { tab: q.tab, rows: limited }
-    },
-  }
-
-  function row(
-    id: string, name: string,
-    cD: number, cW: number, cM: number,
-    rD: number, rW: number, rM: number,
-    goal: number | null,
-  ): AgentMetricsDTO {
+    const api = (p: string) => baseUrl.replace(/\/$/, '') + p
     return {
-      agentId: id, agentName: name,
-      counts: { daily: cD, weekly: cW, monthly: cM },
-      revenue: { daily: rD, weekly: rW, monthly: rM },
-      goal,
+        async getScoreboard(q) {
+            try {
+                const url = new URL(api('/scoreboard'), window.location.origin)
+                url.searchParams.set('tab', q.tab)
+                if (q.limit != null) url.searchParams.set('limit', String(q.limit))
+                if (q.sort)         url.searchParams.set('sort',  q.sort)
+                if (q.order)        url.searchParams.set('order', q.order)
+                return await http<ScoreboardResponseDTO>(url.toString())
+            } catch (e) {
+                if (e instanceof HttpError) throw new Error(`Scoreboard HTTP ${e.status}`)
+                throw new Error('Scoreboard fetch failed')
+            }
+        },
     }
-  }
 }
+
+/* ───────────────────────── Mock service (dev) ───────────────────────── */
+
+/** Deterministic PRNG (mulberry32) – handy for debugging stable datasets. */
+function mulberry32(seed: number): () => number {
+    let t = seed >>> 0
+    return function () {
+        t += 0x6D2B79F5
+        let r = Math.imul(t ^ (t >>> 15), 1 | t)
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r)
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296
+    }
+}
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** Small name pool to generate realistic-looking agent names. */
+const FIRST_NAMES = ['Lia','Olivia','Jane','Mason','Ethan','Noah','Ava','Emma','Lucas','Mia','Sofia','Amelia','Henry','Jack','Leo','Mila','Elena','Aria','Chloe','Nora']
+const LAST_NAMES  = ['Delough','Agent','Johnson','Miller','Brown','Davis','Wilson','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Garcia','Martinez','Robinson','Clark','Lewis']
+function makeAgentName(rand: () => number, i: number): string {
+    const f = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)]
+    const l = LAST_NAMES[Math.floor(rand() * LAST_NAMES.length)]
+    // add a tiny suffix sometimes to avoid duplicates in small pools
+    const maybeSuffix = rand() > 0.93 ? ` ${String(i).padStart(3,'0')}` : ''
+    return `${f} ${l}${maybeSuffix}`
+}
+
+/**
+ * Generates a stable mock dataset of agents.
+ * - Heavy-tail distribution to produce clear leaders.
+ * - Revenue roughly proportional to counts with small noise.
+ * - Goal is intentionally `null` to match "unset" state in UI.
+ */
+function makeRows(count: number, seed: number): AgentMetricsDTO[] {
+    const rand = mulberry32(seed)
+    const rows: AgentMetricsDTO[] = []
+    for (let i = 1; i <= count; i++) {
+        const skill = rand()               // 0..1
+        const heavy = Math.pow(skill, 2.2) // heavy-tail -> a few strong leaders
+
+        // counts (rough proportions between periods)
+        const cD = Math.max(0, Math.round(heavy * 25 + rand() * 3))
+        const cW = Math.max(0, Math.round(cD * (5 * (0.9 + rand() * 0.3))))
+        const cM = Math.max(0, Math.round(cW * (4 * (0.9 + rand() * 0.3))))
+
+        // revenue (proportional to counts with a bit of noise)
+        const rD = round2(cD * (50 * (0.9 + rand() * 0.3)))
+        const rW = round2(cW * (55 * (0.9 + rand() * 0.3)))
+        const rM = round2(cM * (60 * (0.9 + rand() * 0.3)))
+
+        // Goal intentionally "not set" in mock to reflect real API case
+        const goal = null
+
+        rows.push({
+            agentId: String(i),
+            agentName: makeAgentName(rand, i),
+            counts:  { daily: cD, weekly: cW, monthly: cM },
+            revenue: { daily: rD, weekly: rW, monthly: rM },
+            goal,
+        })
+    }
+    return rows
+}
+
+/** Aggregates totals across the FULL dataset (not just visible top). */
+function computeTotals(rows: AgentMetricsDTO[]): ScoreboardTotalsDTO {
+    const t: ScoreboardTotalsDTO = {
+        counts:  { daily: 0, weekly: 0, monthly: 0 },
+        revenue: { daily: 0, weekly: 0, monthly: 0 },
+        goal: null,
+    }
+    let goalSeen = false
+    for (const r of rows) {
+        t.counts.daily    += Number(r.counts.daily    || 0)
+        t.counts.weekly   += Number(r.counts.weekly   || 0)
+        t.counts.monthly  += Number(r.counts.monthly  || 0)
+        t.revenue.daily   += Number(r.revenue.daily   || 0)
+        t.revenue.weekly  += Number(r.revenue.weekly  || 0)
+        t.revenue.monthly += Number(r.revenue.monthly || 0)
+        if (typeof r.goal === 'number' && Number.isFinite(r.goal)) {
+            t.goal = (t.goal ?? 0) + r.goal
+            goalSeen = true
+        }
+    }
+    if (!goalSeen) t.goal = null
+    return t
+}
+
+/**
+ * Mock service for local/dev:
+ * - Builds large, stable datasets once (≈1000/600 agents).
+ * - Sorts by requested period and returns TOP N.
+ * - Always includes `totals` computed across ALL agents.
+ */
+export function createMockScoreService(): ScoreService {
+    const datasets: Record<ScoreTab, AgentMetricsDTO[]> = {
+        sales:     makeRows(1000, 1),
+        retention: makeRows(600,  2),
+    }
+
+    return {
+        async getScoreboard(q: ScoreboardQuery): Promise<ScoreboardResponseDTO> {
+            const all = [...datasets[q.tab]]
+
+            const sortKey: 'daily' | 'weekly' | 'monthly' = q.sort ?? 'monthly'
+            const order = q.order ?? 'desc'
+            all.sort((a, b) => {
+                const av = a.revenue[sortKey] ?? 0
+                const bv = b.revenue[sortKey] ?? 0
+                return order === 'asc' ? av - bv : bv - av
+            })
+
+            const totals = computeTotals(all)       // totals across FULL dataset
+            const limit  = q.limit ?? 7
+            const rows   = all.slice(0, limit)      // only the visible top
+
+            return { tab: q.tab, rows, totals }
+        },
+    }
+}
+
+
+
