@@ -5,7 +5,12 @@ defineProps<{ value: string | number }>()
 
 function fmt(v: string | number){
   return typeof v === 'number'
-      ? v.toLocaleString('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 })
+      ? v.toLocaleString('en-US', {
+        style:'currency',
+        currency:'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
       : v
 }
 </script>

@@ -1,8 +1,15 @@
 import { ENV } from '@/env'
-import { createHttpGroupService, createMockGroupService, type GroupService } from './service'
+import { createHttpGroupService, createMockGroupService } from './service'
+import type { GroupService } from './types'
 
-let _groups: GroupService | null = null
+let _svc: GroupService | null = null
+
 export function getGroupService(): GroupService {
-  if (!_groups) _groups = ENV.USE_MOCK && !ENV.API_BASE_URL ? createMockGroupService() : createHttpGroupService(ENV.API_BASE_URL!)
-  return _groups
+    if (_svc) return _svc
+    _svc =
+        ENV.USE_MOCK || !ENV.API_BASE_URL
+            ? createMockGroupService()
+            : createHttpGroupService(ENV.API_BASE_URL as string)
+    return _svc
 }
+

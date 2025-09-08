@@ -1,4 +1,3 @@
-<!-- src/pages/Scoreboard.vue -->
 <script setup lang="ts">
 import HeaderBar from '@/components/layout/HeaderBar.vue'
 import TableContainer from '@/components/scoreboard/TableContainer.vue'
@@ -19,35 +18,37 @@ import { toRow } from '@/mappers/scoreboard'
 import { getGroupService } from '@/services/groups'
 import type { ScoreboardTotalsDTO, ScoreTab } from '@/services/scoreboard/types'
 
+/** Icons for the Grouping button and Add Group action */
+import iconGroupingOn  from '@/assets/icons/Icon-grouping-on.svg?url'
+import iconGroupingOff from '@/assets/icons/Icon-grouping-off.svg?url'
+import iconAdd         from '@/assets/icons/Icon-add.svg?url'
+
 /* ---------- constants ---------- */
-const MAX_ROWS = 7            // always show exactly 7 rows (real + empty fillers)
-const FETCH_LIMIT = 50        // fetch more than visible top to allow grouping/replacement
+const MAX_ROWS = 7
+const FETCH_LIMIT = 50
 
 /* ---------- routing / tabs ---------- */
 const route = useRoute(), router = useRouter()
 const activeTab = ref<ScoreTab>(String(route.query.tab ?? 'sales') as ScoreTab)
 const tabs = [{ label: 'Sales', value: 'sales' }, { label: 'Retention', value: 'retention' }]
 
-// reflect tab switch in URL (no full navigation)
+/** Keep the tab reflected in the URL without full navigation */
 watch(activeTab, v => router.replace({ query: { ...route.query, tab: v } }))
 
 /* ---------- sound / modals ---------- */
 const sound = useSound()
-const showMelody = ref(false)
+const showMelody   = ref(false)
 const showGrouping = ref(false)
-const volumeOn = computed<boolean>(() => !!sound.enabled.value)
+const volumeOn     = computed<boolean>(() => !!sound.enabled.value)
 
 /* ---------- table data ---------- */
-const rawRows = ref<BaseRow[]>([])                     // full fetched slice (not just visible 7)
-const apiTotals = ref<ScoreboardTotalsDTO | null>(null) // backend totals across FULL dataset
+const rawRows   = ref<BaseRow[]>([])                     // fetched slice (not just visible 7)
+const apiTotals = ref<ScoreboardTotalsDTO | null>(null)  // totals across the FULL dataset
 
 async function load () {
   try {
     const res = await getScoreService().getScoreboard({
-      tab: activeTab.value,
-      limit: FETCH_LIMIT,
-      sort: 'monthly',
-      order: 'desc'
+      tab: activeTab.value, limit: FETCH_LIMIT, sort: 'monthly', order: 'desc'
     })
     rawRows.value   = res.rows.map(toRow)
     apiTotals.value = res.totals ?? null
@@ -58,37 +59,50 @@ async function load () {
   }
 }
 
-/* ---------- groups ---------- */
+/* ---------- groups (persisted via groups service) ---------- */
 type GroupDef = { id: string; name: string; memberIds: (string | number)[] }
 const groups = ref<GroupDef[]>([])
 
+/** Fetch groups for the current tab. */
 async function refreshGroups () {
-  const api = await getGroupService().list() as any[]
+  const api = await getGroupService().list(activeTab.value) as any[]
   groups.value = api.map(g => ({
     id: g.id,
     name: g.name,
-    memberIds: g.memberIds ?? g.memberAgentIds ?? []
+    memberIds: g.memberAgentIds ?? g.memberIds ?? []
   }))
 }
 
-/**
- * On tab change:
- * - reset selection/grouping state (to avoid mixing different tabs)
- * - reload scoreboard + groups
- */
+/* ---------- grouping state (persisted per-tab in localStorage) ---------- */
 const groupingOn  = ref(false)
 const selectedIds = ref<Array<string | number>>([])
-const canAddGroup = computed(() => groupingOn.value && selectedIds.value.length > 0)
-const groupingOnBool = computed<boolean>(() => !!groupingOn.value)
 
-watch(activeTab, async () => {
-  groupingOn.value = false
+const GROUPING_KEY = (tab: ScoreTab) => `sb:grouping:${tab}`
+
+/** Load persisted grouping state for tab (called on tab change & first mount). */
+function loadGroupingState(tab: ScoreTab){
+  const raw = localStorage.getItem(GROUPING_KEY(tab))
+  groupingOn.value = raw === '1'
+}
+
+/** Persist current state whenever toggled. */
+watch(groupingOn, v => {
+  localStorage.setItem(GROUPING_KEY(activeTab.value), v ? '1' : '0')
+})
+
+/** On tab change: reset selection, load grouping state for that tab, fetch data + groups. */
+watch(activeTab, async (tab) => {
   selectedIds.value = []
+  loadGroupingState(tab)
   await load()
   await refreshGroups()
 }, { immediate: true })
 
-/* Selected agent names (for Grouping modal display) */
+/* ---------- selection helpers ---------- */
+const canAddGroup    = computed(() => groupingOn.value && selectedIds.value.length > 0)
+const groupingOnBool = computed<boolean>(() => !!groupingOn.value)
+
+/** Names of selected agents (for Grouping modal preview) */
 const selectedNames = computed(() => {
   const sel = new Set(selectedIds.value.map(String))
   return rawRows.value.filter(r => sel.has(String(r.id))).map(r => r.agent)
@@ -104,26 +118,28 @@ function toggleSelect (id: string | number) {
   selectedIds.value = Array.from(s)
 }
 
-/* ---------- visible top-7 calculation (merge groups + agents) ---------- */
+/* ---------- build visible top-7 (merge groups + agents when grouping ON) ---------- */
 function toNum (v: any) { const n = Number(v); return Number.isFinite(n) ? n : 0 }
 
 const visibleRows = computed<(BaseRow | GroupRow)[]>(() => {
   const rows = rawRows.value
   if (!rows.length) return []
 
-  // rank positions within fetched slice
+  // If grouping is OFF → just raw top-7 slice
+  if (!groupingOn.value) {
+    return rows.slice(0, MAX_ROWS)
+  }
+
+  // Else: aggregate groups and exclude their members from base
   const posById = new Map<string, number>()
   rows.forEach((r, i) => posById.set(String(r.id), i))
 
-  // members that are part of any group
   const groupMemberIds = new Set(groups.value.flatMap(g => g.memberIds.map(String)))
 
-  // base candidates (non-grouped agents only)
   const baseCandidates = rows
       .filter(r => !groupMemberIds.has(String(r.id)))
       .map(r => ({ kind: 'base' as const, row: r, pos: posById.get(String(r.id))! }))
 
-  // group candidates (aggregated; position = best member position)
   const groupCandidates: Array<{ kind:'group'; row: GroupRow; pos: number }> = []
   for (const g of groups.value) {
     const indices = g.memberIds
@@ -145,30 +161,27 @@ const visibleRows = computed<(BaseRow | GroupRow)[]>(() => {
     groupCandidates.push({ kind: 'group', row: agg, pos: Math.min(...indices) })
   }
 
-  // merge and take top-7 by position
   return [...baseCandidates, ...groupCandidates]
       .sort((a, b) => a.pos - b.pos)
       .slice(0, MAX_ROWS)
       .map(c => c.row)
 })
 
-/* ---------- totals / widget ---------- */
-/**
- * Monthly total for the header pill:
- * - Prefer backend totals (full dataset)
- * - Fallback to summing fetched rows if backend totals are absent
- */
+/* ---------- totals / header pill ---------- */
+/** Monthly total pill: prefer backend totals; fallback to local slice sum. */
 const monthlyTotal = computed(() =>
     apiTotals.value
         ? (Number(apiTotals.value.revenue.monthly) || 0)
         : rawRows.value.reduce((s, r) => s + (Number((r as any).monthly) || 0), 0)
 )
 
-/* ---------- modals ---------- */
+/* ---------- modals & group actions ---------- */
 async function openGroupingModal () {
   if (!canAddGroup.value) return
   showGrouping.value = true
 }
+
+/** Create a group, close modal, refresh groups and clear selection. */
 async function onGroupingCreate (name: string) {
   if (!name?.trim() || selectedIds.value.length === 0) return
   await getGroupService().create({
@@ -180,6 +193,8 @@ async function onGroupingCreate (name: string) {
   showGrouping.value = false
   await refreshGroups()
 }
+
+/** Remove a group and refresh the list. */
 async function ungroup (id: string | number) {
   await getGroupService().remove(String(id))
   await refreshGroups()
@@ -220,10 +235,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <template #header>
         <SegmentedControl v-model="activeTab" :options="tabs" :width="210" />
         <div style="display:inline-grid;grid-auto-flow:column;column-gap:8px;align-items:center;">
-          <ButtonAccent v-if="canAddGroup" label="Add Group" @click="openGroupingModal" />
+          <!-- Show only when there is a selection -->
+          <ButtonAccent
+              v-if="canAddGroup"
+              label="Add Group"
+              :icon-src="iconAdd"
+              @click="openGroupingModal"
+          />
+          <!-- Grouping toggle (state persisted per-tab) -->
           <ButtonSecondary
-              :label="groupingOnBool ? 'Done' : 'Group agents'"
+              :label="'Grouping'"
               :pressed="groupingOnBool"
+              :icon-src="groupingOnBool ? iconGroupingOn : iconGroupingOff"
               @click="toggleGrouping"
           />
         </div>
@@ -239,7 +262,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
       <template #totals>
         <div class="totals">
-          <!-- Use backend totals for full dataset; fallback inside TotalsRow -->
+          <!-- Use backend totals for full dataset; fallback happens inside TotalsRow -->
           <TotalsRow :rows="rawRows as any" :totals="apiTotals" />
         </div>
       </template>
