@@ -134,14 +134,14 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
 
 /* Centered numeric columns */
 .col--amt {
-  width: 60px;        /* Amount columns stay 60px */
+  width: 60px;
   align-items: center;
   text-align: center;
 }
 
 /* Wider Goal to match table rows (70px) */
 .col--goal {
-  width: 70px;        /* +10px compared to Amount */
+  width: 70px;
   align-items: center;
   text-align: center;
 }

@@ -1,4 +1,3 @@
-<!-- src/components/scoreboard/ScoreTable.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import Divider from '@/components/ui/Divider.vue'
@@ -280,7 +279,6 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
 /* placeholder to keep control column aligned in skeleton rows */
 .placeholder-16{ width:16px; height:16px; flex:0 0 16px; }
 
-/* Truncate long names (agents & groups) */
 .agent-text{
   flex:1 1 auto;
   min-width:0;
@@ -290,6 +288,6 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
 }
 
 /* Emphasize group name only */
-.tr--group .agent-text{ font-weight:600; }
+.tr--group .agent-text{ font-weight:500; }
 </style>
 
