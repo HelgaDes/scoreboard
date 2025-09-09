@@ -8,7 +8,7 @@ import ScoreTable, { type BaseRow, type GroupRow } from '@/components/scoreboard
 import TotalsRow from '@/components/scoreboard/TotalsRow.vue'
 import TotalWidget from '@/components/scoreboard/TotalWidget.vue'
 import SelectMelodyModal from '@/components/modals/SelectMelodyModal.vue'
-import GroupingModal from '@/components/modals/GroupingModal.vue' // ⬅️ ДОДАНО
+import GroupingModal from '@/components/modals/GroupingModal.vue'
 
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -16,61 +16,97 @@ import { useSound } from '@/composables/useSound'
 import { getScoreService } from '@/services/scoreboard'
 import { toRow } from '@/mappers/scoreboard'
 import { getGroupService } from '@/services/groups'
+import type { ScoreboardTotalsDTO, ScoreTab } from '@/services/scoreboard/types'
 
+/** Icons for the Grouping button and Add Group action */
+import iconGroupingOn  from '@/assets/icons/Icon-grouping-on.svg?url'
+import iconGroupingOff from '@/assets/icons/Icon-grouping-off.svg?url'
+import iconAdd         from '@/assets/icons/Icon-add.svg?url'
 
+/* ---------- constants ---------- */
+const MAX_ROWS = 7
+const FETCH_LIMIT = 50
+
+/* ---------- routing / tabs ---------- */
 const route = useRoute(), router = useRouter()
-const activeTab = ref(String(route.query.tab ?? 'sales'))
-watch(activeTab, v => router.replace({ query: { ...route.query, tab: v } }))
+const activeTab = ref<ScoreTab>(String(route.query.tab ?? 'sales') as ScoreTab)
 const tabs = [{ label: 'Sales', value: 'sales' }, { label: 'Retention', value: 'retention' }]
 
+/** Keep the tab reflected in the URL without full navigation */
+watch(activeTab, v => router.replace({ query: { ...route.query, tab: v } }))
 
+/* ---------- sound / modals ---------- */
 const sound = useSound()
-const showMelody = ref(false)
-const showGrouping = ref(false) // ⬅️ ДОДАНО
-const volumeOn = computed<boolean>(() => !!sound.enabled.value)
+const showMelody   = ref(false)
+const showGrouping = ref(false)
+const volumeOn     = computed<boolean>(() => !!sound.enabled.value)
 
+/* ---------- table data ---------- */
+const rawRows   = ref<BaseRow[]>([])                     // fetched slice (not just visible 7)
+const apiTotals = ref<ScoreboardTotalsDTO | null>(null)  // totals across the FULL dataset
 
-const rawRows = ref<BaseRow[]>([])
 async function load () {
-  const res = await getScoreService().getScoreboard({
-    tab: activeTab.value as any,
-    limit: 7,
-    sort: 'monthly',
-    order: 'desc'
-  })
-  rawRows.value = res.rows.map(toRow)
+  try {
+    const res = await getScoreService().getScoreboard({
+      tab: activeTab.value, limit: FETCH_LIMIT, sort: 'monthly', order: 'desc'
+    })
+    rawRows.value   = res.rows.map(toRow)
+    apiTotals.value = res.totals ?? null
+  } catch (e) {
+    console.error('load scoreboard failed:', e)
+    rawRows.value   = []
+    apiTotals.value = null
+  }
 }
-watch(activeTab, load, { immediate: true })
 
-
+/* ---------- groups (persisted via groups service) ---------- */
 type GroupDef = { id: string; name: string; memberIds: (string | number)[] }
 const groups = ref<GroupDef[]>([])
 
+/** Fetch groups for the current tab. */
 async function refreshGroups () {
-  const api = await getGroupService().list() as any[]
+  const api = await getGroupService().list(activeTab.value) as any[]
   groups.value = api.map(g => ({
     id: g.id,
     name: g.name,
-    memberIds: g.memberIds ?? g.memberAgentIds ?? []
+    memberIds: g.memberAgentIds ?? g.memberIds ?? []
   }))
 }
-refreshGroups()
 
+/* ---------- grouping state (persisted per-tab in localStorage) ---------- */
 const groupingOn  = ref(false)
 const selectedIds = ref<Array<string | number>>([])
-const canAddGroup = computed(() => groupingOn.value && selectedIds.value.length > 0)
 
+const GROUPING_KEY = (tab: ScoreTab) => `sb:grouping:${tab}`
 
-const groupingOnBool = computed<boolean>(() => !!groupingOn.value)
+/** Load persisted grouping state for tab (called on tab change & first mount). */
+function loadGroupingState(tab: ScoreTab){
+  const raw = localStorage.getItem(GROUPING_KEY(tab))
+  groupingOn.value = raw === '1'
+}
 
-const selectedNames = computed(() => {
-  // надійно, якщо id можуть бути і string, і number
-  const sel = new Set(selectedIds.value.map(String))
-  return rawRows.value
-      .filter(r => sel.has(String(r.id)))
-      .map(r => r.agent)
+/** Persist current state whenever toggled. */
+watch(groupingOn, v => {
+  localStorage.setItem(GROUPING_KEY(activeTab.value), v ? '1' : '0')
 })
 
+/** On tab change: reset selection, load grouping state for that tab, fetch data + groups. */
+watch(activeTab, async (tab) => {
+  selectedIds.value = []
+  loadGroupingState(tab)
+  await load()
+  await refreshGroups()
+}, { immediate: true })
+
+/* ---------- selection helpers ---------- */
+const canAddGroup    = computed(() => groupingOn.value && selectedIds.value.length > 0)
+const groupingOnBool = computed<boolean>(() => !!groupingOn.value)
+
+/** Names of selected agents (for Grouping modal preview) */
+const selectedNames = computed(() => {
+  const sel = new Set(selectedIds.value.map(String))
+  return rawRows.value.filter(r => sel.has(String(r.id))).map(r => r.agent)
+})
 
 function toggleGrouping () {
   groupingOn.value = !groupingOn.value
@@ -82,18 +118,39 @@ function toggleSelect (id: string | number) {
   selectedIds.value = Array.from(s)
 }
 
+/* ---------- build visible top-7 (merge groups + agents when grouping ON) ---------- */
 function toNum (v: any) { const n = Number(v); return Number.isFinite(n) ? n : 0 }
-const visibleRows = computed<(BaseRow | GroupRow)[]>(() => {
-  const members = new Set(groups.value.flatMap(g => g.memberIds))
-  const base: (BaseRow | GroupRow)[] = rawRows.value.filter(r => !members.has(r.id))
-  const list: (BaseRow | GroupRow)[] = [...base]
 
+const visibleRows = computed<(BaseRow | GroupRow)[]>(() => {
+  const rows = rawRows.value
+  if (!rows.length) return []
+
+  // If grouping is OFF → just raw top-7 slice
+  if (!groupingOn.value) {
+    return rows.slice(0, MAX_ROWS)
+  }
+
+  // Else: aggregate groups and exclude their members from base
+  const posById = new Map<string, number>()
+  rows.forEach((r, i) => posById.set(String(r.id), i))
+
+  const groupMemberIds = new Set(groups.value.flatMap(g => g.memberIds.map(String)))
+
+  const baseCandidates = rows
+      .filter(r => !groupMemberIds.has(String(r.id)))
+      .map(r => ({ kind: 'base' as const, row: r, pos: posById.get(String(r.id))! }))
+
+  const groupCandidates: Array<{ kind:'group'; row: GroupRow; pos: number }> = []
   for (const g of groups.value) {
-    const memberRows = rawRows.value.filter(r => g.memberIds.includes(r.id))
-    if (memberRows.length === 0) continue
+    const indices = g.memberIds
+        .map(id => posById.get(String(id)))
+        .filter((x): x is number => typeof x === 'number')
+    if (indices.length === 0) continue
+
+    const memberRows = rows.filter(r => g.memberIds.map(String).includes(String(r.id)))
     const agg: GroupRow = {
       id: g.id, type: 'group', memberIds: [...g.memberIds], agent: g.name,
-      a1: memberRows.reduce((s, r) => s + toNum(r.a1), 0),
+      a1:      memberRows.reduce((s, r) => s + toNum(r.a1),      0),
       daily:   memberRows.reduce((s, r) => s + toNum(r.daily),   0),
       a2:      memberRows.reduce((s, r) => s + toNum(r.a2),      0),
       weekly:  memberRows.reduce((s, r) => s + toNum(r.weekly),  0),
@@ -101,41 +158,49 @@ const visibleRows = computed<(BaseRow | GroupRow)[]>(() => {
       monthly: memberRows.reduce((s, r) => s + toNum(r.monthly), 0),
       goal:    memberRows.reduce((s, r) => s + toNum(r.goal),    0) || '-'
     }
-    const minIndex = Math.min(...memberRows.map(r => rawRows.value.findIndex(x => x.id === r.id)))
-    list.splice(minIndex, 0, agg)
+    groupCandidates.push({ kind: 'group', row: agg, pos: Math.min(...indices) })
   }
-  return list
+
+  return [...baseCandidates, ...groupCandidates]
+      .sort((a, b) => a.pos - b.pos)
+      .slice(0, MAX_ROWS)
+      .map(c => c.row)
 })
 
-function fmt (n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
-}
-const totalMonthly = computed(() => visibleRows.value.reduce((s, r) => s + (Number((r as any).monthly) || 0), 0))
+/* ---------- totals / header pill ---------- */
+/** Monthly total pill: prefer backend totals; fallback to local slice sum. */
+const monthlyTotal = computed(() =>
+    apiTotals.value
+        ? (Number(apiTotals.value.revenue.monthly) || 0)
+        : rawRows.value.reduce((s, r) => s + (Number((r as any).monthly) || 0), 0)
+)
 
-
+/* ---------- modals & group actions ---------- */
 async function openGroupingModal () {
   if (!canAddGroup.value) return
-  showGrouping.value = true //
+  showGrouping.value = true
 }
 
+/** Create a group, close modal, refresh groups and clear selection. */
 async function onGroupingCreate (name: string) {
-  if (!name?.trim()) return
+  if (!name?.trim() || selectedIds.value.length === 0) return
   await getGroupService().create({
     name: name.trim(),
     memberAgentIds: [...selectedIds.value],
-    tab: activeTab.value as any
+    tab: activeTab.value
   })
   selectedIds.value = []
   showGrouping.value = false
   await refreshGroups()
 }
 
+/** Remove a group and refresh the list. */
 async function ungroup (id: string | number) {
   await getGroupService().remove(String(id))
   await refreshGroups()
 }
 
-
+/* ---------- UX: Esc closes the topmost modal ---------- */
 const onKey = (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
     if (showMelody.value) showMelody.value = false
@@ -155,7 +220,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       @logout="$router.push('/login')"
   />
 
-
+  <!-- Hide the table when any modal is open -->
   <section
       v-show="!showMelody && !showGrouping"
       class="table-section"
@@ -163,16 +228,25 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   >
     <TableContainer :width="820" :overlay-top="-20">
       <template #overlay>
-        <TotalWidget :value="fmt(totalMonthly)" />
+        <!-- Pass raw number; TotalWidget formats it -->
+        <TotalWidget :value="monthlyTotal" />
       </template>
 
       <template #header>
         <SegmentedControl v-model="activeTab" :options="tabs" :width="210" />
         <div style="display:inline-grid;grid-auto-flow:column;column-gap:8px;align-items:center;">
-          <ButtonAccent v-if="canAddGroup" label="Add Group" @click="openGroupingModal" />
+          <!-- Show only when there is a selection -->
+          <ButtonAccent
+              v-if="canAddGroup"
+              label="Add Group"
+              :icon-src="iconAdd"
+              @click="openGroupingModal"
+          />
+          <!-- Grouping toggle (state persisted per-tab) -->
           <ButtonSecondary
-              :label="groupingOnBool ? 'Done' : 'Group agents'"
+              :label="'Grouping'"
               :pressed="groupingOnBool"
+              :icon-src="groupingOnBool ? iconGroupingOn : iconGroupingOff"
               @click="toggleGrouping"
           />
         </div>
@@ -188,29 +262,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
       <template #totals>
         <div class="totals">
-          <TotalsRow :rows="visibleRows as any" />
+          <!-- Use backend totals for full dataset; fallback happens inside TotalsRow -->
+          <TotalsRow :rows="rawRows as any" :totals="apiTotals" />
         </div>
       </template>
     </TableContainer>
   </section>
 
-  <div
-      v-if="showMelody"
-      class="melody-layer"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Select melody"
-  >
+  <!-- Select melody -->
+  <div v-if="showMelody" class="melody-layer" role="dialog" aria-modal="true" aria-label="Select melody">
     <SelectMelodyModal @close="showMelody = false" />
   </div>
 
-  <div
-      v-if="showGrouping"
-      class="grouping-layer"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Grouping agents"
-  >
+  <!-- Grouping -->
+  <div v-if="showGrouping" class="grouping-layer" role="dialog" aria-modal="true" aria-label="Grouping agents">
     <GroupingModal
         :members="selectedNames"
         @close="showGrouping = false"
@@ -239,3 +304,4 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   height: 100%;
 }
 </style>
+
