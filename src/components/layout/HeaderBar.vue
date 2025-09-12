@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import Icon from '@/components/ui/Icon.vue'
 
+/**
+ * Prop-driven header.
+ * - `volumeOn` is controlled by the parent.
+ * - This component only emits events.
+ */
 const props = withDefaults(defineProps<{
   title?: string
   showActions?: boolean
@@ -69,7 +74,7 @@ const emit = defineEmits<{
   display:grid; place-items:center;
   border-radius:999px;
   background: var(--SurfaceContainer, rgba(255,255,255,.06));
-  color: inherit; /* svg бере currentColor */
+  color: inherit; /* svg uses currentColor */
   transition: background .15s ease, color .15s ease, opacity .15s ease;
 }
 

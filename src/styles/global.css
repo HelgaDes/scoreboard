@@ -24,3 +24,10 @@ body::before{content:"";position:fixed;inset:0;background:url("/src/assets/bg-gr
 /* Overlay target for modals/overlays so they scale with the stage */
 .stage-overlay{ position:absolute; inset:0; pointer-events:none; }
 
+/* makes the overlay area a stacking context above the stage */
+.stage-overlay{
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+}

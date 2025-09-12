@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue'
 import Icon from '@/components/ui/Icon.vue'
 import ButtonAction from '@/components/ui/ButtonAction.vue'
 import { useSound } from '@/composables/useSound'
@@ -15,14 +16,18 @@ const options = [
 ] as const
 
 function close() {
+  sound.stop()
   emit('close')
   props.onClose?.()
 }
+
+onBeforeUnmount(() => {
+  sound.stop()
+})
 </script>
 
 <template>
   <div class="modal" role="dialog" aria-label="Select melody">
-    <!-- фон-картка під контентом -->
     <img class="modal__bg" :src="bgMelodyUrl" alt="" aria-hidden="true" />
 
     <div class="modal__content">
@@ -39,11 +44,11 @@ function close() {
             @click="sound.setMelody(o.key as any)"
         >
           <span class="name BodySmall">{{ o.label }}</span>
-          <Icon v-if="sound.getMelody() === (o.key as any)" name="check" :size="16"/>
+          <Icon v-if="sound.getMelody() === (o.key as any)" name="check" :size="16" />
         </button>
       </div>
 
-      <div class="divider" role="separator" aria-orientation="horizontal"></div>
+      <div class="divider" role="separator" aria-orientation="horizontal" />
 
       <div class="actions">
         <ButtonAction class="act" label="Test melody"  variant="primary"   @click="sound.test()" />
@@ -102,4 +107,3 @@ function close() {
 .actions{ display:flex; flex-direction:column; gap:8px; }
 .actions .act{ width:100%; }
 </style>
-
