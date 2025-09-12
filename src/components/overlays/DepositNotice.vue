@@ -1,62 +1,120 @@
 <script setup lang="ts">
 import Divider from '@/components/ui/Divider.vue'
+import ButtonAction from '@/components/ui/ButtonAction.vue'
+import { onMounted, onBeforeUnmount } from 'vue'
+import { useSound } from '@/composables/useSound'
+import { useOverlayGate } from '@/composables/useOverlayGate'
+import bgCardBlurUrl from '@/assets/bg-blur-modal-deposit.svg?url'
 
-/** Props for the single deposit notification. */
-const { agentName, amount, currency } = defineProps<{
+/** Props supplied by host */
+const props = defineProps<{
+  id: string | number
   agentName: string
   amount: number
-  currency: string // 'USD' by now; kept generic
+  currency?: string
 }>()
 
-/** Format amount with currency (exactly 2 decimals). */
-function formatAmount(n: number, cur: string) {
-  return Number(n).toLocaleString('en-US', {
+const emit = defineEmits<{ (e: 'close'): void }>()
+
+/** While notice is shown, keep a global overlay gate open (hide the table). */
+const releaseGate = useOverlayGate('deposit')
+
+/** Format with exactly 2 decimals (USD by default). */
+function formatMoney(value: number, curr: string = 'USD') {
+  return value.toLocaleString('en-US', {
     style: 'currency',
-    currency: cur || 'USD',
+    currency: curr,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
 }
 
-/** Close event is emitted by the host after 5s; keep local API for button. */
-const emit = defineEmits<{ (e: 'close'): void }>()
+/** Sound hook (plays the melody chosen in SelectMelodyModal). */
+const sound = useSound()
+let timer: number | undefined
+
+onMounted(() => {
+  // Play once if sound is enabled in header.
+  if (!sound.enabled.value) return
+
+  try {
+    const r = sound.play()
+
+    // r may be void or Promise<void>; catch AbortError/NotAllowedError if any.
+    if (r && typeof (r as any).catch === 'function') {
+      (r as Promise<void>).catch(() => {})
+    }
+  } catch {
+    /* noop */
+  }
+  // Auto-close after 8 seconds
+  timer = window.setTimeout(() => emit('close'), 8000)
+})
+
+onBeforeUnmount(() => {
+  if (timer) window.clearTimeout(timer)
+  // Release the global gate so the table can reappear.
+  releaseGate()
+})
 </script>
 
 <template>
-  <!-- Teleport anchor is #stage-overlay; parent (DepositHost) handles it -->
-  <div class="notice" role="dialog" aria-live="polite" aria-label="Deposit notification">
-    <!-- title -->
-    <div class="hdr">
-      <div class="name" :title="agentName">{{ agentName }}</div>
+  <!-- Inside-scene overlay (teleport target is the stage overlay layer) -->
+  <teleport to="#stage-overlay">
+    <div
+        class="layer"
+        role="dialog"
+        aria-modal="true"
+        aria-live="polite"
+        aria-label="Deposit notification"
+    >
+      <div class="card" :style="{ backgroundImage: `url(${bgCardBlurUrl})` }">
+        <!-- Title / agent name -->
+        <div class="hdr">
+          <div class="name">{{ props.agentName }}</div>
+        </div>
+
+        <!-- Amount row -->
+        <div class="body">
+          <span>+&nbsp;{{ formatMoney(props.amount, props.currency ?? 'USD') }}</span>
+        </div>
+
+        <Divider class="divider" aria-hidden="true" />
+        <ButtonAction
+            class="act"
+            label="Close"
+            variant="secondary"
+            :block="true"
+            @click="emit('close')"
+        />
+      </div>
     </div>
-
-    <!-- amount row -->
-    <div class="body">
-      <span class="label">Deposit</span>
-      <span class="sum">{{ formatAmount(amount, currency) }}</span>
-    </div>
-
-    <Divider class="divider" aria-hidden="true" />
-
-    <!-- close action -->
-    <button class="act" data-variant="secondary" type="button" @click="emit('close')">
-      Close
-    </button>
-  </div>
+  </teleport>
 </template>
 
 <style scoped>
-/* Card shell follows the 280×auto modal spec (same visual family as other modals). */
-.notice{
+/* Overlay layer inside the 960x540 stage */
+.layer{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.card{
+  position: relative;
   display: flex;
   width: 280px;
+  min-height: 240px;
   padding: 12px;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  background: none center / 100% 100% no-repeat;
 }
 
-/* Header (agent name) — single line with ellipsis */
+/* Header / name */
 .hdr{
   display: flex;
   height: 32px;
@@ -64,20 +122,15 @@ const emit = defineEmits<{ (e: 'close'): void }>()
   justify-content: center;
   align-items: center;
   align-self: stretch;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
-
 .name{
   color: var(--On-Surface, #E3E3E3);
   text-align: center;
-  font-family: Oswald, system-ui, -apple-system, "Segoe UI", Roboto,
-  "Helvetica Neue", Arial, "Noto Sans",
-  "Apple Color Emoji","Segoe UI Emoji", sans-serif;
+  font-family: Oswald, sans-serif;
   font-size: 16px;
-  font-style: normal;
   font-weight: 400;
-  line-height: 20px;                /* 125% */
-  letter-spacing: 0.016rem;         /* ≈ 0.25px @16px, avoids fractional px warning */
+  line-height: 20px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -94,51 +147,14 @@ const emit = defineEmits<{ (e: 'close'): void }>()
 
   color: var(--On-Surface, #E3E3E3);
   text-align: center;
-  font-family: Oswald, system-ui, -apple-system, "Segoe UI", Roboto,
-  "Helvetica Neue", Arial, "Noto Sans",
-  "Apple Color Emoji","Segoe UI Emoji", sans-serif;
+  font-family: Oswald, sans-serif;
   font-size: 20px;
-  font-style: normal;
   font-weight: 500;
-  line-height: 32px;                /* 160% */
-  letter-spacing: 0.031rem;         /* ≈ 0.5px @16px */
+  line-height: 32px;
 }
 
-.label{ opacity: .8; }
-.sum  { font-weight: 600; }
-
-/* Divider between amount and action */
-.divider{
-  align-self: stretch;
-  height: 1px;
-  background: var(--Outline-Variant, rgba(255,255,255,.06));
-  margin: 4px 0;
-}
-
-/* Action button (visual matches secondary modal actions) */
-.act{
-  min-width: 120px;
-  height: 32px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-
-  background: var(--On-Surface-Blur, rgba(255,255,255,0.04));
-  color: var(--On-Surface-Container, #E6E9E7);
-
-  font-family: Oswald, system-ui, -apple-system, "Segoe UI", Roboto,
-  "Helvetica Neue", Arial, "Noto Sans",
-  "Apple Color Emoji","Segoe UI Emoji", sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-  letter-spacing: 0.016rem;
-}
-
-.act:hover{
-  background: var(--On-Surface-Container, #C4C7C5);
-  color: var(--Surface-Container, #1A1C1A);
-}
+.divider{ align-self: stretch; margin: 8px 0 6px; }
+.act{ min-width: 120px; }
 </style>
+
 

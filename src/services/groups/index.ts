@@ -1,6 +1,6 @@
 import { ENV } from '@/env'
 import { createHttpGroupService, createMockGroupService } from './service'
-import type { GroupService } from './types'
+import type { GroupService } from './service'
 
 let _svc: GroupService | null = null
 

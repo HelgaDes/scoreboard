@@ -1,24 +1,22 @@
-import type { ScoreTab } from '@/services/scoreboard/types'
+import type { ScoreTab } from '../scoreboard/types'
 
-export type GroupDTO = {
+/** Server/group DTO used across the app. */
+export interface GroupDTO {
     id: string
     name: string
+    /** Agent IDs that belong to this group. */
     memberAgentIds: Array<string | number>
+    /** Which scoreboard tab this group belongs to. */
     tab: ScoreTab
 }
 
-export type CreateGroupDTO = {
+/** Payload for create/update ("upsert") operations. */
+export interface UpsertGroupInput {
+    /** Optional: include for update, omit for create. */
+    id?: string
     name: string
     memberAgentIds: Array<string | number>
     tab: ScoreTab
 }
 
-export interface GroupService {
-    /** List groups for a given tab */
-    list(tab: ScoreTab): Promise<GroupDTO[]>
-    /** Create a new group */
-    create(input: CreateGroupDTO): Promise<GroupDTO>
-    /** Remove by id */
-    remove(id: string): Promise<void>
-}
-
+export type { ScoreTab }
