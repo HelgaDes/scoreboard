@@ -156,5 +156,3 @@ onBeforeUnmount(() => {
 .act{ width: 100%; }
 </style>
 
-
-
