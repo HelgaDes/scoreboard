@@ -12,27 +12,28 @@ export interface Row {
   weekly?: number | null
   a3?: number | string
   monthly?: number | null
-  goal?: number | string | null
+  goal?: number | string | null      // ← monthly goal USD (target), not %
 }
 
 const props = defineProps<{
   rows: Row[]
   /**
    * Prefer server-provided totals (aggregated over the FULL dataset).
-   * If missing (e.g., during local dev), we fall back to summing `rows`.
+   * If missing (e.g., during local dev), fall back to summing `rows`.
    */
   totals?: ScoreboardTotalsDTO | null
 }>()
 
 /** Safe number coercion. */
-function toNum(v: unknown): number {
+function num(v: unknown): number {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
 }
 
 /** Money formatter (USD). */
 function money(n: number): string {
-  return n.toLocaleString('en-US', {
+  const r = Math.round(n * 100) / 100
+  return r.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -40,42 +41,45 @@ function money(n: number): string {
   })
 }
 
+/** Percent formatter for the totals Goal column. */
+function percent(n: number): string {
+  const p = Math.round(n)
+  return `${p}%`
+}
 
 /**
  * Final totals shown in the footer.
  * 1) Use backend totals if provided (correct across entire dataset)
  * 2) Fallback: aggregate from the passed-in rows slice
  */
-const totals = computed(() => {
+const view = computed(() => {
+  // 1) Server totals (preferred)
   if (props.totals) {
     const t = props.totals
-    const g = toNum(t.goal)
-    return {
-      c1: toNum(t.counts.daily),
-      c2: toNum(t.counts.weekly),
-      c3: toNum(t.counts.monthly),
-      d:  toNum(t.revenue.daily),
-      w:  toNum(t.revenue.weekly),
-      m:  toNum(t.revenue.monthly),
-      g,
-      gSeen: t.goal != null,
-    }
+    const c1 = num(t.counts.daily)
+    const c2 = num(t.counts.weekly)
+    const c3 = num(t.counts.monthly)
+    const d  = num(t.revenue.daily)
+    const w  = num(t.revenue.weekly)
+    const m  = num(t.revenue.monthly)
+    const gSum = num(t.goal)
+    const gSeen = t.goal != null && gSum > 0
+    const gPct = gSeen ? (m / gSum) * 100 : NaN
+    return { c1, c2, c3, d, w, m, gSeen, gPct }
   }
 
-  // Fallback aggregation from the visible/limited rows
+  // 2) Fallback: compute from rows
   let c1 = 0, c2 = 0, c3 = 0
-  let d = 0, w = 0, m = 0, g = 0, gSeen = false
+  let d = 0, w = 0, m = 0
+  let gSum = 0, gSeen = false
   for (const r of props.rows) {
-    c1 += toNum(r.a1)
-    c2 += toNum(r.a2)
-    c3 += toNum(r.a3)
-    d  += toNum(r.daily)
-    w  += toNum(r.weekly)
-    m  += toNum(r.monthly)
-    const gv = toNum(r.goal)
-    if (gv) { g += gv; gSeen = true }
+    c1 += num(r.a1); c2 += num(r.a2); c3 += num(r.a3)
+    d  += num(r.daily); w += num(r.weekly); m += num(r.monthly)
+    const g = num(r.goal)
+    if (g > 0) { gSum += g; gSeen = true }
   }
-  return { c1, c2, c3, d, w, m, g, gSeen }
+  const gPct = gSeen && gSum > 0 ? (m / gSum) * 100 : NaN
+  return { c1, c2, c3, d, w, m, gSeen, gPct }
 })
 </script>
 
@@ -83,17 +87,18 @@ const totals = computed(() => {
   <div class="totals">
     <div class="col col--label BodySmall">Totals</div>
 
-    <div class="col col--amt BodyMedium">{{ totals.c1 }}</div>
-    <div class="col col--period BodyMedium">{{ money(totals.d) }}</div>
+    <div class="col col--amt BodyMedium">{{ view.c1 }}</div>
+    <div class="col col--period BodyMedium">{{ money(view.d) }}</div>
 
-    <div class="col col--amt BodyMedium">{{ totals.c2 }}</div>
-    <div class="col col--period BodyMedium">{{ money(totals.w) }}</div>
+    <div class="col col--amt BodyMedium">{{ view.c2 }}</div>
+    <div class="col col--period BodyMedium">{{ money(view.w) }}</div>
 
-    <div class="col col--amt BodyMedium">{{ totals.c3 }}</div>
-    <div class="col col--period BodyMedium">{{ money(totals.m) }}</div>
+    <div class="col col--amt BodyMedium">{{ view.c3 }}</div>
+    <div class="col col--period BodyMedium">{{ money(view.m) }}</div>
 
+    <!-- Goal as completion % across the whole dataset -->
     <div class="col col--goal BodyMedium">
-      {{ totals.gSeen ? money(totals.g) : '-' }}
+      {{ view.gSeen ? percent(view.gPct) : '—' }}
     </div>
   </div>
 </template>
@@ -139,14 +144,14 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
   text-align: center;
 }
 
-/* Wider Goal to match table rows (70px) */
+/* Goal */
 .col--goal {
   width: 70px;
   align-items: center;
   text-align: center;
 }
 
-/* Period money columns stretch */
+/* Period $ columns stretch */
 .col--period {
   width: 120px;
   flex: 1 0 0;
@@ -154,3 +159,4 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
   text-align: left;
 }
 </style>
+

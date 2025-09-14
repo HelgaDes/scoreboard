@@ -3,10 +3,10 @@ import { computed } from 'vue'
 import Divider from '@/components/ui/Divider.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 
-/** 16px remove-group icon (colored via CSS mask via currentColor) */
+
 import iconRemoveGroup from '@/assets/icons/Icon-remove-group.svg?url'
 
-/** Base agent row used by the table. */
+/** Base agent row used by the table (keeps goal as USD target from API). */
 export type BaseRow = {
   id: string | number
   type?: 'base'
@@ -17,10 +17,10 @@ export type BaseRow = {
   weekly?: number | string
   a3?: number | string
   monthly?: number | string
-  goal?: number | string
+  goal?: number | string | null
 }
 
-/** Aggregated group row. */
+/** Aggregated group row */
 export type GroupRow = {
   id: string | number
   type: 'group'
@@ -32,7 +32,7 @@ export type GroupRow = {
   weekly?: number | string
   a3?: number | string
   monthly?: number | string
-  goal?: number | string
+  goal?: number | string | null
 }
 
 const props = defineProps<{
@@ -55,12 +55,12 @@ const emptyCount = computed(() => Math.max(0, MAX_ROWS - realRows.value.length))
 const selectedSet = computed(() => new Set(props.selectedIds.map(String)))
 const isSelected  = (id: string | number) => selectedSet.value.has(String(id))
 
-/** Safe cell passthrough for non-money values. */
+/** Safe pass-through for non-money text cells. */
 function cell(v: unknown) {
   return (v ?? '') as any
 }
 
-/** Money formatter (USD) – hard round to 2 decimals to avoid float artifacts. */
+/** Money formatter (USD) – used for Daily/Weekly/Monthly columns. */
 function moneyCell(v: unknown) {
   const n = Number(v)
   if (!Number.isFinite(n)) return (v ?? '') as any
@@ -71,6 +71,19 @@ function moneyCell(v: unknown) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
+}
+
+/**
+ * Percent formatter for Goal column.
+ * We deliberately keep `goal` in rows as USD target and compute % here:
+ *   percent = monthly / goal * 100
+ */
+function percentGoal(monthly: unknown, goalUsd: unknown) {
+  const m = Number(monthly)
+  const g = Number(goalUsd)
+  if (!Number.isFinite(m) || !Number.isFinite(g) || g <= 0) return '—'
+  const pct = Math.round((m / g) * 100)
+  return `${pct}%`
 }
 </script>
 
@@ -104,10 +117,7 @@ function moneyCell(v: unknown) {
           <!-- index -->
           <div class="td td--num">{{ i + 1 }}</div>
 
-          <!-- agent / group with LEFT control column:
-               - checkbox (base rows) when groupingOn
-               - remove-group icon (group rows) when groupingOn
-               Keeps a single aligned control column. -->
+          <!-- agent / group with LEFT control column -->
           <div class="td td--agent">
             <div class="agent-cell">
               <Checkbox
@@ -135,10 +145,10 @@ function moneyCell(v: unknown) {
           <div class="td td--period">{{ moneyCell((r as any).weekly) }}</div>
           <div class="td td--amt">{{ cell((r as any).a3) }}</div>
           <div class="td td--period">{{ moneyCell((r as any).monthly) }}</div>
-          <div class="td td--goal">{{ moneyCell((r as any).goal) }}</div>
+          <!-- Goal as % of monthly target -->
+          <div class="td td--goal">{{ percentGoal((r as any).monthly, (r as any).goal) }}</div>
         </div>
 
-        <!-- divider between rows -->
         <Divider
             v-if="i < realRows.length - 1 || emptyCount > 0"
             class="row-divider"
@@ -152,7 +162,6 @@ function moneyCell(v: unknown) {
           <div class="td td--num"></div>
           <div class="td td--agent">
             <div class="agent-cell">
-              <!-- keep the control column width (16px) aligned with checkboxes/icons -->
               <span class="placeholder-16"></span>
               <span class="agent-text"></span>
             </div>
@@ -261,7 +270,7 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
   min-width:0; /* allow inner text to shrink */
 }
 
-/* 16px mask-based icon button (aligns with checkbox column) */
+/* mask-based icon button */
 .icon-btn{
   width:16px; height:16px; flex:0 0 16px;
   display:inline-block;
@@ -290,4 +299,5 @@ $onSurf:    var(--OnSurface,        var(--On-Surface,        #E3E3E3));
 /* Emphasize group name only */
 .tr--group .agent-text{ font-weight:500; }
 </style>
+
 
