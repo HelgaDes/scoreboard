@@ -1,4 +1,3 @@
-// src/services/scoreboard/service.ts
 import { http, HttpError } from '@/services/http'
 import type {
     ScoreboardQuery,
@@ -34,6 +33,8 @@ export function createHttpScoreService(baseUrl: string): ScoreService {
 }
 
 /* ─────────── Mock dataset (stable) ─────────── */
+
+/** Deterministic RNG (mulberry32) to keep demo data stable between runs. */
 function mulberry32(seed: number): () => number {
     let t = seed >>> 0
     return function () {
@@ -46,7 +47,7 @@ function mulberry32(seed: number): () => number {
 const round2 = (n: number) => Math.round(n * 100) / 100
 
 const FIRST_NAMES = ['Lia','Olivia','Jane','Mason','Ethan','Noah','Ava','Emma','Lucas','Mia','Sofia','Amelia','Henry','Jack','Leo','Mila','Elena','Aria','Chloe','Nora']
-const LAST_NAMES  = ['Delough','Agent','Johnson','Miller','Brown','Davis','Wilson','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Garcia','Martinez','Robinson','Clark','Lewis']
+const LAST_NAMES  = ['Agent','Johnson','Miller','Brown','Davis','Wilson','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Garcia','Martinez','Robinson','Clark','Lewis']
 function makeAgentName(rand: () => number, i: number): string {
     const f = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)]
     const l = LAST_NAMES[Math.floor(rand() * LAST_NAMES.length)]
@@ -54,27 +55,43 @@ function makeAgentName(rand: () => number, i: number): string {
     return `${f} ${l}${maybeSuffix}`
 }
 
+/**
+ * Generate agents with realistic counters/revenue and a monthly goal (USD).
+ * The goal is a plain USD target (as it would come from CRM); UI can compute % as monthly/goal.
+ */
 function makeRows(count: number, seed: number): AgentMetricsDTO[] {
     const rand = mulberry32(seed)
     const rows: AgentMetricsDTO[] = []
     for (let i = 1; i <= count; i++) {
         const skill = rand()
-        const heavy = Math.pow(skill, 2.2)
+        const heavy = Math.pow(skill, 2.2)   // heavier tail to produce visible leaders
 
+        // counters
         const cD = Math.max(0, Math.round(heavy * 25 + rand() * 3))
         const cW = Math.max(0, Math.round(cD * (5 * (0.9 + rand() * 0.3))))
         const cM = Math.max(0, Math.round(cW * (4 * (0.9 + rand() * 0.3))))
 
+        // revenue (USD), proportional to counters with a bit of noise
         const rD = round2(cD * (50 * (0.9 + rand() * 0.3)))
         const rW = round2(cW * (55 * (0.9 + rand() * 0.3)))
         const rM = round2(cM * (60 * (0.9 + rand() * 0.3)))
+
+        // ── MOCK GOAL (monthly USD) ───────────────────────────────────────────
+        // Keep `goal` as an absolute USD target (like CRM). UI should compute completion % as monthly/goal.
+        // Choose a ratio in ~[0.9 . 1.5] so completion looks plausible.
+        const goalRatio = 0.9 + rand() * 0.6
+        const goalNoise = rand() * 200       // small absolute jitter
+        const goalRaw   = rM * goalRatio + goalNoise
+        // Snap to $50 to look human-entered; also enforce a sensible minimal goal.
+        const goal = Math.max(250, Math.round(goalRaw / 50) * 50)
+        // ─────────────────────────────────────────────────────────────────────
 
         rows.push({
             agentId: String(i),
             agentName: makeAgentName(rand, i),
             counts:  { daily: cD, weekly: cW, monthly: cM },
             revenue: { daily: rD, weekly: rW, monthly: rM },
-            goal: null, // "unset" by design
+            goal, // keep as USD number; do NOT convert to percent here
         })
     }
     return rows
