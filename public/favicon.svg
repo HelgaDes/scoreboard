@@ -1,0 +1,8 @@
+<!-- public/favicon.svg -->
+<!-- Simple Vue logo favicon; scales crisply at any size -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 261.76 226.69" width="256" height="256">
+    <!-- green V -->
+    <path fill="#41B883" d="M130.88 0l-26.18 45.34L78.52 0H0l130.88 226.69L261.76 0h-78.52l-26.18 45.34L130.88 0z"/>
+    <!-- dark V -->
+    <path fill="#35495E" d="M130.88 0l-26.18 45.34L78.52 0H43.47l87.41 151.14L218.29 0h-35.05l-26.18 45.34L130.88 0z"/>
+</svg>
